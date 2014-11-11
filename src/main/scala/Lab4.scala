@@ -4,9 +4,9 @@ object Lab4 extends jsy.util.JsyApplication {
   
   /*
    * CSCI 3155: Lab 4
-   * <Your Name>
+   * Max Harris
    * 
-   * Partner: <Your Partner's Name>
+   * Partner: Kevin Vo
    * Collaborators: <Any Collaborators>
    */
 
@@ -37,17 +37,32 @@ object Lab4 extends jsy.util.JsyApplication {
   /* Lists */
   
   def compressRec[A](l: List[A]): List[A] = l match {
-    case Nil | _ :: Nil => throw new UnsupportedOperationException
-    case h1 :: (t1 @ (h2 :: _)) => throw new UnsupportedOperationException
+    case Nil | _ :: Nil => l;
+    case h1 :: (t1 @ (h2 :: _)) => {
+      if (h1 == h2) compressRec(t1)
+      else h1 :: compressRec(t1)
+    }
   }
   
-  def compressFold[A](l: List[A]): List[A] = l.foldRight(Nil: List[A]){
-    (h, acc) => throw new UnsupportedOperationException
+  def compressFold[A](l: List[A]): List[A] = l.foldRight(Nil: List[A]){ // accum starts as Nil and h starts as last element of list
+    (h, acc) => acc match {
+      case Nil => {
+        if (h == Nil) acc // same as List[A](Nil)
+        else h :: acc
+      }
+      case h1 :: _ => {
+        if (h == h1) acc
+        else h :: acc
+      }
+    }
   }
   
   def mapFirst[A](f: A => Option[A])(l: List[A]): List[A] = l match {
-    case Nil => throw new UnsupportedOperationException
-    case h :: t => throw new UnsupportedOperationException
+    case Nil => l
+    case h :: t => f(h) match {
+      case None => h :: mapFirst(f)(t)
+      case Some(a) => a :: t
+    }
   }
   
   /* Search Trees */
