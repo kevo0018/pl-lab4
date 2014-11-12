@@ -75,8 +75,8 @@ object Lab4 extends jsy.util.JsyApplication {
     
     def foldLeft[A](z: A)(f: (A, Int) => A): A = {
       def loop(acc: A, t: Tree): A = t match {
-        case Empty => throw new UnsupportedOperationException
-        case Node(l, d, r) => throw new UnsupportedOperationException
+        case Empty => acc
+        case Node(l, d, r) => loop(f( loop(acc, l), d), r)
       }
       loop(z, this)
     }
@@ -98,15 +98,15 @@ object Lab4 extends jsy.util.JsyApplication {
     l.foldLeft(Empty: Tree){ (acc, i) => acc insert i }
   
   def sum(t: Tree): Int = t.foldLeft(0){ (acc, d) => acc + d }
-  
+  // *********** //
   def strictlyOrdered(t: Tree): Boolean = {
     val (b, _) = t.foldLeft((true, None: Option[Int])){
-      throw new UnsupportedOperationException
+      case ( (acc, None), ele )       => ((acc && true), Some(ele): Option[Int])
+      case ( (acc, Some(ele1)), ele)  => if (ele1 < ele) ((acc && true), None) else ((acc && false), None)
     }
     b
   }
   
-
   /* Type Inference */
   
   // A helper function to check whether a jsy type has a function type in it.
@@ -135,22 +135,70 @@ object Lab4 extends jsy.util.JsyApplication {
         case TNumber => TNumber
         case tgot => err(tgot, e1)
       }
-      case Unary(Not, e1) =>
-        throw new UnsupportedOperationException
-      case Binary(Plus, e1, e2) =>
-        throw new UnsupportedOperationException
-      case Binary(Minus|Times|Div, e1, e2) => 
-        throw new UnsupportedOperationException
-      case Binary(Eq|Ne, e1, e2) =>
-        throw new UnsupportedOperationException
-      case Binary(Lt|Le|Gt|Ge, e1, e2) =>
-        throw new UnsupportedOperationException
-      case Binary(And|Or, e1, e2) =>
-        throw new UnsupportedOperationException
-      case Binary(Seq, e1, e2) =>
-        throw new UnsupportedOperationException
-      case If(e1, e2, e3) =>
-        throw new UnsupportedOperationException
+      case Unary(Not, e1) => typ(e1) match {
+        case TBool => TBool
+        case tgot => err(tgot, e1)
+      }
+      case Binary(Plus, e1, e2) => typ(e1) match {
+        case TNumber => typ(e2) match {
+          case TNumber => TNumber
+          case tgot => err(tgot, e2)
+        }
+        case TString => typ(e2) match {
+          case TString => TString
+          case tgot => err(tgot, e2)
+        }
+        case tgot => err(tgot, e1)
+      }
+        
+      case Binary(Minus|Times|Div, e1, e2) => typ(e1) match {
+        case TNumber => typ(e2) match {
+          case TNumber => TNumber
+          case tgot => err(tgot, e2)
+        }
+        case tgot => err(tgot, e1)
+      }
+        
+      case Binary(Eq|Ne, e1, e2) => {
+        if      (hasFunctionTyp(typ(e1))) err(typ(e1), e1)
+        else if (hasFunctionTyp(typ(e2))) err(typ(e2), e2)
+        else    TBool
+      }
+        
+        // ***************************************** //
+        // *********** JESS START HERE  ************ //
+        // ***************************************** //
+
+      case Binary(Lt|Le|Gt|Ge, e1, e2) => typ(e1) match {
+        case TNumber => typ(e2) match {
+          case TNumber => TBool
+          case tgot => err(tgot, e2)
+        }
+        case TString => typ(e2) match {
+          case TString => TBool
+          case tgot => err(tgot, e2)
+        }
+        case tgot => err(tgot, e1)
+      }
+        
+      case Binary(And|Or, e1, e2) => typ(e1) match {
+        case TBool => typ(e2) match {
+          case TBool => TBool
+          case tgot => err(tgot, e2)
+        }
+        case tgot => err(tgot, e1)
+      }
+        
+      case Binary(Seq, e1, e2) => typ(e1); typ(e2)
+        
+      case If(e1, e2, e3) => typ(e1) match {
+        case TBool => {
+          if (typ(e2) == typ(e3)) typ(e2)
+          else err(typ(e3), e3)
+        }
+        case tgot => err(tgot, e1)
+      }
+        
       case Function(p, params, tann, e1) => {
         // Bind to env1 an environment that extends env with an appropriate binding if
         // the function is potentially recursive.
@@ -162,13 +210,14 @@ object Lab4 extends jsy.util.JsyApplication {
           case _ => err(TUndefined, e1)
         }
         // Bind to env2 an environment that extends env1 with bindings for params.
-        val env2 = throw new UnsupportedOperationException
-        // Match on whether the return type is specified.
-        tann match {
-          case None => throw new UnsupportedOperationException
-          case Some(tret) => throw new UnsupportedOperationException
+        val env2 = env1 ++ params
+        // Match on whether the return type is specified // ADDED: and the inferred return type.
+        (tann, typeInfer(env2, e1)) match {
+          case (None, typR) => TFunction(params, typR)
+          case (Some(tret), typR) => if (tret == typR) TFunction(params, typR) else err(typR, e1)
         }
       }
+      
       case Call(e1, args) => typ(e1) match {
         case TFunction(params, tret) if (params.length == args.length) => {
           (params, args).zipped.foreach {
