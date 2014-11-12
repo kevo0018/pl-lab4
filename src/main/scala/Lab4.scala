@@ -2,12 +2,15 @@ object Lab4 extends jsy.util.JsyApplication {
   import jsy.lab4.ast._
   import jsy.lab4.Parser
   
+  // To search for things to ask Alok: // Learn exactly whats going on here
+
+
   /*
    * CSCI 3155: Lab 4
    * Max Harris
    * 
    * Partner: Kevin Vo
-   * Collaborators: <Any Collaborators>
+   * Collaborators: Jessica Lynch
    */
 
   /*
@@ -98,7 +101,13 @@ object Lab4 extends jsy.util.JsyApplication {
     l.foldLeft(Empty: Tree){ (acc, i) => acc insert i }
   
   def sum(t: Tree): Int = t.foldLeft(0){ (acc, d) => acc + d }
-  // *********** //
+  
+
+
+  // ******************************************************************************************** //
+  // ********              !!!!!!!!!!!!  NEED ALOK TO EXPLAIN  !!!!!!!!!!!!!          *********** //
+  // ******************************************************************************************** //
+
   def strictlyOrdered(t: Tree): Boolean = {
     val (b, _) = t.foldLeft((true, None: Option[Int])){
       case ( (acc, None), ele )       => ((acc && true), Some(ele): Option[Int])
@@ -164,10 +173,6 @@ object Lab4 extends jsy.util.JsyApplication {
         else if (hasFunctionTyp(typ(e2))) err(typ(e2), e2)
         else    TBool
       }
-        
-        // ***************************************** //
-        // *********** JESS START HERE  ************ //
-        // ***************************************** //
 
       case Binary(Lt|Le|Gt|Ge, e1, e2) => typ(e1) match {
         case TNumber => typ(e2) match {
@@ -218,19 +223,36 @@ object Lab4 extends jsy.util.JsyApplication {
         }
       }
       
+
+      // Call takes args from the caller and matches them against the params that the function called is defined with.
+      // Eg, function: def func(a:TNumber, b:TNumber) has args: List(("a", TNumber), ("b", TNumber))
+      // when you call this function, func(7, 9), then your params are similar to List(7, 9)
+      //
+      // This means the length of the number of args passed in should match the number of params in
+      // the function definition and their types should match. 
+      //
+      // The only thing we have to check here is that the types of params match the types of args
+
       case Call(e1, args) => typ(e1) match {
         case TFunction(params, tret) if (params.length == args.length) => {
           (params, args).zipped.foreach {
-            throw new UnsupportedOperationException
+            (a, b) => (a, typ(b)) match {
+              case ( (str, typA), typB ) => if (typA != typB) err(typA, b)
+            }
           };
           tret
         }
         case tgot => err(tgot, e1)
       }
-      case Obj(fields) =>
-        throw new UnsupportedOperationException
-      case GetField(e1, f) =>
-        throw new UnsupportedOperationException
+
+      // Learn exactly whats going on here
+      case Obj(fields) => TObj( fields.map( s => (s._1, typeInfer(env, fields(s._1)) ) ) )
+
+      // Learn exactly whats going on here
+      case GetField(e1, f) => typ(e1) match {
+        case TObj(tfields) => tfields(f)
+        case tgot => err(tgot, e1)
+      }
     }
   }
   
@@ -270,14 +292,19 @@ object Lab4 extends jsy.util.JsyApplication {
       case If(e1, e2, e3) => If(subst(e1), subst(e2), subst(e3))
       case Var(y) => if (x == y) v else e
       case ConstDecl(y, e1, e2) => ConstDecl(y, subst(e1), if (x == y) e2 else subst(e2))
+      // Learn exactly whats going on here
       case Function(p, params, tann, e1) =>
-        throw new UnsupportedOperationException
-      case Call(e1, args) =>
-        throw new UnsupportedOperationException
-      case Obj(fields) =>
-        throw new UnsupportedOperationException
-      case GetField(e1, f) =>
-        throw new UnsupportedOperationException
+        if (params.exists((t1: (String, Typ)) => t1._1 == x) || p == Some(x)) {
+          Function(p, params, tann, e1)
+        }
+        else Function(p, params, tann, subst(e1))
+      // Learn exactly whats going on here
+      case Call(e1, args) => Call(subst(e1), args map subst)
+      // Learn exactly whats going on here
+      case Obj(fields) => Obj( fields.map( s => (s._1, subst(s._2) )))
+      // Learn exactly whats going on here
+      case GetField(e1, f) => GetField(subst(e1), f)
+        
     }
   }
   
@@ -314,7 +341,14 @@ object Lab4 extends jsy.util.JsyApplication {
           case _ => throw new StuckError(e)
         }
       /*** Fill-in more cases here. ***/
-        
+      // Learn exactly whats going on here
+      case GetField(Obj(fields), f) => fields.get(f) match {
+        case Some(e1) => e1 
+        case None => throw new StuckError(e)
+      }
+      // Learn exactly whats going on here
+      case GetField(e1, f) => GetField(step(e1), f) 
+
       /* Inductive Cases: Search Rules */
       case Print(e1) => Print(step(e1))
       case Unary(uop, e1) => Unary(uop, step(e1))
@@ -323,6 +357,10 @@ object Lab4 extends jsy.util.JsyApplication {
       case If(e1, e2, e3) => If(step(e1), e2, e3)
       case ConstDecl(x, e1, e2) => ConstDecl(x, step(e1), e2)
       /*** Fill-in more cases here. ***/
+      // // Learn exactly whats going on here
+      // case Call(v1,args) if isValue(v1)=> Call(v1, mapFirst(stepIfNotValue)(args))  
+      // // Learn exactly whats going on here
+      // case Call(e1,e2)=> Call(step(e1),e2)
       
       /* Everything else is a stuck error. Should not happen if e is well-typed. */
       case _ => throw StuckError(e)
