@@ -10,7 +10,7 @@ object Lab4 extends jsy.util.JsyApplication {
    * Max Harris
    * 
    * Partner: Kevin Vo
-   * Collaborators: Jessica Lynch
+   * Collaborators: Jessica Lynch, Dan Matthews
    */
 
   /*
@@ -216,6 +216,7 @@ object Lab4 extends jsy.util.JsyApplication {
         }
         // Bind to env2 an environment that extends env1 with bindings for params.
         val env2 = env1 ++ params
+        // params.foldLeft (env1) { (x, y) => match y { case (varI, typI) => x + varI => typI}}
         // Match on whether the return type is specified // ADDED: and the inferred return type.
         (tann, typeInfer(env2, e1)) match {
           case (None, typR) => TFunction(params, typR)
@@ -246,9 +247,10 @@ object Lab4 extends jsy.util.JsyApplication {
       }
 
       // Learn exactly whats going on here
+      // maps the object to a standard jsy object type, with string fields mapped to their jsy tfields
       case Obj(fields) => TObj( fields.map( s => (s._1, typeInfer(env, fields(s._1)) ) ) )
 
-      // Learn exactly whats going on here
+      // Judgemnet form says e must be object 'e: {...., , ....}'
       case GetField(e1, f) => typ(e1) match {
         case TObj(tfields) => tfields(f)
         case tgot => err(tgot, e1)
@@ -298,13 +300,12 @@ object Lab4 extends jsy.util.JsyApplication {
           Function(p, params, tann, e1)
         }
         else Function(p, params, tann, subst(e1))
-      // Learn exactly whats going on here
-      case Call(e1, args) => Call(subst(e1), args map subst)
+      // have to substitue for each arg in the call e[vn/xn][vn-1/xn-1]
+      case Call(e1, args) => Call(subst(e1), args map subst) //args.map (v1 => subst(v1)) )
       // Learn exactly whats going on here
       case Obj(fields) => Obj( fields.map( s => (s._1, subst(s._2) )))
       // Learn exactly whats going on here
       case GetField(e1, f) => GetField(subst(e1), f)
-        
     }
   }
   
@@ -331,24 +332,36 @@ object Lab4 extends jsy.util.JsyApplication {
         v1 match {
           case Function(p, params, _, e1) => {
             val e1p = (params, args).zipped.foldRight(e1){
-              throw new UnsupportedOperationException
+              // Learn exactly whats going on here
+              (paramsX, acc) => paramsX match {
+                case ((paramName, _ ), argValue) => substitute(acc, argValue, paramName)
+              }
             }
             p match {
-              case None => throw new UnsupportedOperationException
-              case Some(x1) => throw new UnsupportedOperationException
+              case None => e1p
+              case Some(x1) => substitute(e1p, v1, x1)
             }
           }
           case _ => throw new StuckError(e)
         }
       /*** Fill-in more cases here. ***/
+
+      // Implement DoMinus, DoDiv, DoTime)
+      case Binary(Minus, N(n1), N(n2)) => N(n1 - n2) 
+      // Implement DoDiv 
+      case Binary(Div, N(n1), N(n2)) => N(n1 / n2)
+      // Implement DoTimes 
+      case Binary(Times, N(n1), N(n2)) => N(n1 * n2)
       // Learn exactly whats going on here
       case GetField(Obj(fields), f) => fields.get(f) match {
         case Some(e1) => e1 
         case None => throw new StuckError(e)
       }
-      // Learn exactly whats going on here
-      case GetField(e1, f) => GetField(step(e1), f) 
-
+      case If(B(b1), e2, e3) => {
+          if (b1) e2 else e3   
+      }
+      // // Learn exactly whats going on here
+      
       /* Inductive Cases: Search Rules */
       case Print(e1) => Print(step(e1))
       case Unary(uop, e1) => Unary(uop, step(e1))
@@ -357,10 +370,15 @@ object Lab4 extends jsy.util.JsyApplication {
       case If(e1, e2, e3) => If(step(e1), e2, e3)
       case ConstDecl(x, e1, e2) => ConstDecl(x, step(e1), e2)
       /*** Fill-in more cases here. ***/
-      // // Learn exactly whats going on here
-      // case Call(v1,args) if isValue(v1)=> Call(v1, mapFirst(stepIfNotValue)(args))  
-      // // Learn exactly whats going on here
-      // case Call(e1,e2)=> Call(step(e1),e2)
+
+      // Learn exactly whats going on here
+      case GetField(e1, f) => GetField(step(e1), f) 
+
+      case Obj(fields) => Obj(fields.map{case (a,b) => (a, step(b))})
+      // Learn exactly whats going on here
+      case Call(v1,args) if isValue(v1)=> Call(v1, mapFirst(stepIfNotValue)(args))  
+      case Call(e1,e2)=> Call(step(e1),e2)
+
       
       /* Everything else is a stuck error. Should not happen if e is well-typed. */
       case _ => throw StuckError(e)

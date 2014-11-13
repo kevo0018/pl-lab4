@@ -7,3 +7,6 @@
 [0m[[0minfo[0m] [0m[32m- should enable implementing treeFromList and sum[0m[0m
 [0m[[0minfo[0m] [0m[32mstrictlyOrdered[0m[0m
 [0m[[0minfo[0m] [0m[32m- should check strict ordering of a binary search tree[0m[0m
+[0m[[0minfo[0m] [0m[32mif[0m[0m
+[0m[[0minfo[0m] [0m[31m- should work *** FAILED ***[0m[0m
+[0m[[0minfo[0m] [0m[31m  If(Binary(Eq,N(1.0),N(1.0)),N(1.0),N(0.0)) did not equal N(1.0) (Lab4Spec.scala:34)[0m[0m

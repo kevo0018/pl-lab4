@@ -30,5 +30,9 @@ class Lab4Spec extends FlatSpec {
     assert(strictlyOrdered(treeFromList(List(1,2))))
   } 
 
+  "if" should "work" in {
+    assert( If(Binary(Eq, N(1), N(1)), N(1), N(0) ))
+  }
+
   // Probably want to write some tests for typeInfer, substitute, and step.
 }
