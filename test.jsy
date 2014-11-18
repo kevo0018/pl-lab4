@@ -1,0 +1,9 @@
+const minus =
+  function (x:number) { return function (y:number) { return x - y + 5 } };
+
+console.log( minus(9)(6) );
+
+const if =
+  function (x:bool) { return (x)? function (y:number) {return y} : function (y:number) {return y+12} };
+  
+  console.log( if(false&&true)(7) );
